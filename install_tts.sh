@@ -4,4 +4,4 @@ mkdir build
 cmake -S . -B build
 cmake --build build
 cd build
-sudo make install
+make

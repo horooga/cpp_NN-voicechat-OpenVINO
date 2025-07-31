@@ -1,18 +1,30 @@
 #include "audio_utils.hpp"
+#include "cpp_NN-voicechat-OpenVINO/face_processing.hpp"
 #include "openvino/genai/speech_generation/text2speech_pipeline.hpp"
 #include <fstream>
 #include <iostream>
+#include <mutex>
 #include <openvino/genai/whisper_pipeline.hpp>
 #include <thread>
 
-void writeTextToFile(const std::string &filename, const std::string &text) {
-	std::ofstream ofs(filename);
-	ofs << text;
-	ofs.close();
+std::mutex mtx;
+std::string sharedAnswerString;
+
+void faceProcessing() {
+	std::string pwd = std::getenv("PWD");
+	// std::ifstream idle0File("face-processing/idle0.txt");
+	std::ifstream smile0File(pwd + "/face-processing/smile0.txt");
+	std::ifstream smile1File(pwd + "/face-processing/smile1.txt");
+
+	if (!smile0File.is_open()) {
+		std::cout << "Error: smile0.txt file not found" << std::endl;
+		return;
+	}
+
+	smile(smile0File, smile1File, mtx, sharedAnswerString);
 }
 
-int main(int argc, char *argv[]) {
-
+void nnProcessing() {
 	ov::AnyMap whisperProperties = {{"PERFORMANCE_HINT", "LATENCY"},
 									{"INFERENCE_PRECISION_HINT", "FP16"},
 									{"CACHE_DIR", "./cache/WhisperPipeline"}};
@@ -33,7 +45,8 @@ int main(int argc, char *argv[]) {
 	llamaPipeline.generate("You are a collucutor in a casual "
 						   "conversation. Keep it in mind and please "
 						   "do not answer to this initial message");
-	std::string recognizedText, answer;
+
+	std::string recognizedText;
 	while (true) {
 		auto rawAudio =
 			utils::audio::record_audio(SAMPLE_RATE, CHANNELS, SECONDS);
@@ -43,24 +56,20 @@ int main(int argc, char *argv[]) {
 			ss << s;
 		}
 		recognizedText = ss.str();
-		if (recognizedText.empty()) {
-			std::cout << "No speech detected. Trying again...\n";
-			// continue;
-			std::exit(1);
-		}
-
-		std::cout << "\n\n\n\n\n\033[93mRECOGNIZED TEXT:\n" << recognizedText;
 
 		try {
-			answer = llamaPipeline.generate(recognizedText);
+			std::lock_guard<std::mutex> lock(mtx);
+			sharedAnswerString = llamaPipeline.generate(recognizedText);
 		} catch (const std::exception &e) {
-			std::cerr << "OpenVINO GenAI LLM error: " << e.what() << std::endl;
-			// break;
-			std::exit(1);
+			break;
 		}
-		writeTextToFile("./answer.txt", answer);
+		std::ofstream ofs("./answer.txt");
+		{
+			std::lock_guard<std::mutex> lock(mtx);
+			ofs << sharedAnswerString;
+			ofs.close();
+		}
 
-		std::cout << "\n\nANSWER:\n" << answer << "\n\n\n\n\n\033[0m";
 		std::string cmd = "espeak-ng/build/src/espeak-ng -v en+f3 --stdout -f "
 						  "./answer.txt | paplay";
 		std::cout << "used tts command: " << cmd << std::endl;
@@ -69,6 +78,15 @@ int main(int argc, char *argv[]) {
 			std::cerr << "Error during text-to-speech playback.\n";
 		}
 	}
+}
+
+int main(int argc, char *argv[]) {
+
+	std::thread nnProcessingThread(nnProcessing);
+	std::thread faceProcessingThread(faceProcessing);
+
+	nnProcessingThread.join();
+	faceProcessingThread.join();
 
 	return 0;
 }

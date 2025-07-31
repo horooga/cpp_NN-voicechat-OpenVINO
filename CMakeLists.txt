@@ -13,7 +13,7 @@ link_directories(
     /opt/intel/openvino_genai_2025.2.0/runtime/lib/intel64
 )
 
-add_executable(cpp_NN-voicechat-OpenVINO src/main.cpp src/audio_utils.cpp)
+add_executable(cpp_NN-voicechat-OpenVINO src/main.cpp src/audio_utils.cpp src/face_processing.cpp)
 
 target_link_libraries(cpp_NN-voicechat-OpenVINO
     openvino_genai
