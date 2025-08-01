@@ -8,11 +8,15 @@ App for neural net voice chat using openvino
                   \
                     -whisper-> recognized text -tiny llama chat-> saved ./answer.txt -espeak-ng via stdout to audio player-> audio output
 
+**Demo (mp4):**
+[![thumbnail](./thumbnail.png)](./demo.mp4)
+
 **Requirements:**
 
 - openvino runtime 2025.2.0 (natively installed)
 - openvino genai 2025.2.0 (natively installed)
 - portaudio
+- pipewire
 
 **Installing:**
 

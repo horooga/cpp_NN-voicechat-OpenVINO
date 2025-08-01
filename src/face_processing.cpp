@@ -1,8 +1,11 @@
 #include "cpp_NN-voicechat-OpenVINO/face_processing.hpp"
+#include <atomic>
+#include <chrono>
 #include <fstream>
 #include <iostream>
-#include <mutex>
 #include <thread>
+
+const int millisecsforletter = 69;
 
 void clearScreen() { std::cout << "\033[2J\033[1;1H"; }
 
@@ -15,39 +18,43 @@ void printFace(std::ifstream &file) {
 	file.seekg(0, std::ios::beg);
 }
 
-void printSubtitle(std::string &text) {
-	std::cout << "============================================================="
-				 "============"
-			  << std::endl;
-	std::cout << text << std::endl;
-	std::cout << "============================================================="
-				 "============"
-			  << std::endl;
-}
+void lipSync(const std::string &word, std::atomic<bool> &stopFlag) {
+	for (auto c : word) {
+		clearScreen();
 
-void smile(std::ifstream &file0, std::ifstream &file1, std::mutex &mtx,
-		   std::string &sharedText) {
-	while (true) {
-		{
-			std::lock_guard<std::mutex> lock(mtx);
-			printFace(file0);
-			printSubtitle(sharedText);
+		if (stopFlag.load()) {
+			std::cout << "Time for one word is over" << std::endl;
+			return;
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(500));
-		clearScreen();
-		{
-			std::lock_guard<std::mutex> lock(mtx);
-			printFace(file1);
-			printSubtitle(sharedText);
+		switch (c) {
+		case 'a':
+		case 'i':
+		case 'o':
+		case 'u':
+			printFace(idle_open);
+			break;
+		case 'b':
+		case 'c':
+		case 'd':
+		case 'e':
+		case 'f':
+		case 'g':
+		case 'y':
+		case 'j':
+		case 'p':
+		case 's':
+		case 'x':
+			printFace(idle_teeth);
+			break;
+		case 'r':
+		case 'w':
+			printFace(idle_round);
+			break;
+		default:
+			printFace(idle0);
+			break;
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(500));
-		clearScreen();
-		{
-			std::lock_guard<std::mutex> lock(mtx);
-			printFace(file0);
-			printSubtitle(sharedText);
-		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(500));
-		clearScreen();
+		std::this_thread::sleep_for(
+			std::chrono::milliseconds(millisecsforletter));
 	}
 }
