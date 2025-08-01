@@ -79,7 +79,7 @@ void save_to_wav(const float *waveform_ptr, size_t waveform_size,
 	format.container = drwav_container_riff;
 	format.format = DR_WAVE_FORMAT_IEEE_FLOAT;
 	format.channels = 1;
-	format.sampleRate = 16000; // assume it is always 16 KHz
+	format.sampleRate = 16000;
 	format.bitsPerSample = bits_per_sample;
 
 	drwav wav;
